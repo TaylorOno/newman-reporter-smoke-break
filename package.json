@@ -1,7 +1,7 @@
 {
-  "name": "newman-reporter-diff",
+  "name": "newman-reporter-smoke-break",
   "version": "0.0.1",
-  "description": "A diff reporter for Newman.",
+  "description": "A Newman reporter to be used with the smoke-break script",
   "main": "src/index.js",
   "author": "Taylor Ono",
   "license": "MIT",

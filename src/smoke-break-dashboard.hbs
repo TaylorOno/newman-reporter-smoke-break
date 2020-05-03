@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>JSON Diff - Online JSON Compare Diff Finder</title>
+    <link rel="stylesheet" href="www/lib/codemirror/lib/codemirror.css" charset="utf-8">
+    <link rel="stylesheet" href="www/lib/codemirror/theme/tomorrow-night.css" charset="utf-8">
+    <style>
+        html, body {
+            margin: 0; padding: 0;
+            height: 100%;
+            background-color: #1D1F21;
+            overflow: hidden;
+        }
+        ul, li {
+            padding: 0;
+            margin: 0;
+            list-style-type: none;
+        }
+        textarea {
+            border: none;
+            background-color: transparent;
+            resize: none;
+        }
+        .json-diff-input {
+            height: 100%;
+            box-sizing: border-box;
+            display: inline-block;
+            float: left;
+            position: relative;
+        }
+
+        .json-diff-input .CodeMirror {
+            height: 100%;
+        }
+
+        .json-diff-input:hover .input-buttons {
+            opacity: 1;
+        }
+
+        .json-diff-input.collapse .input-buttons {
+            display: none;
+        }
+
+        .input-buttons a:hover {
+            opacity: .7;
+        }
+
+        .json-diff-input .input-buttons {
+            transition: opacity .2s;
+            opacity: 0;
+            position: absolute;
+            right: 19px;
+            top: 0;
+            z-index: 4;
+        }
+
+        .json-diff-input .input-buttons a {
+            color: white;
+            text-decoration: none;
+            font-size: 26px;
+        }
+
+        .lighttheme .json-diff-input .input-buttons a {
+            color: #1D1F21;
+        }
+
+        .json-diff-input .input-buttons a.input-split {
+            font-size: 33px;
+            position: relative;
+            top: 5px;
+        }
+
+        .json-diff-input {
+            transition: width .3s;
+        }
+
+        .json-diff-input.split {
+            width: 50%;
+        }
+
+        .json-diff-input.collapse {
+            width: 0%;
+        }
+
+        .json-diff-input.expand {
+            width: 100%;
+        }
+
+        .json-diff-input.split .input-split {
+            display: none;
+        }
+
+        .json-diff-input.collapse .input-collapse {
+            display: none;
+        }
+
+        .json-diff-input.expand .input-expand {
+            display: none;
+        }
+
+        #header {
+            height: 48px;
+            background-color: #181A1B;
+            color: #FFF;
+            font-family: monospace;
+            padding: 0 32px;
+        }
+
+        .header-icon {
+            padding-top: 5px;
+        }
+
+        h1 {
+            margin: 0; padding: 0;
+            font-weight: lighter;
+            text-transform: lowercase;
+            padding-top: 6px;
+        }
+
+        h2 {
+            font-weight: lighter;
+            color: #bbb;
+            margin: 0;
+            padding: 12px;
+            padding-left: 32px;
+        }
+
+        .left {
+            float: left;
+        }
+
+        .right {
+            float: right;
+        }
+
+        #error-message {
+            display: inline-block;
+            position: relative;
+            right: 64px;
+            top: -11px;
+            color: #DD4444;
+        }
+
+        #error-message svg {
+            fill: currentColor;
+            width: 16px;
+            height: 16px;
+            position: relative;
+            top: 3px;
+        }
+
+        .left-panel {
+            width: 200px;
+            height: calc(100% - 48px);
+            float: left;
+            border-right: solid 2px #181A1B;
+            box-sizing: border-box;
+            position: relative;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-container {
+            flex: auto;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            margin-bottom: 16px;
+        }
+
+        .ad-container {
+            flex: auto;
+            box-sizing: border-box;
+            font-family: sans-serif;
+            width: 161px;
+        }
+
+        #carbonads {
+            border-radius: 4px 2px;
+            background-color: #292929;
+            padding: 16px;
+        }
+
+        .lighttheme #carbonads {
+            margin-bottom: 16px;
+        }
+
+        .ad-container a {
+            display: block;
+        }
+
+        .diff-inputs {
+            width: calc(100% - 200px);
+            float: left;
+            height: calc(100% - 48px);
+        }
+
+        .settings-menu {
+            float: right;
+            position: relative;
+            margin-left: 8px;
+        }
+
+        .settings-menu-content:before {
+            content: '';
+            display: block;
+            height: 40px;
+            width: 100%;
+            position: absolute;
+            top: -40px;
+        }
+
+        .settings-menu-content {
+            display: none;
+            position: absolute;
+            z-index: 5;
+            padding: 16px;
+            right: 0;
+            background-color: #0f1010;
+        }
+
+        .settings-menu-content:hover {
+            display: block;
+        }
+
+        .settings-menu:hover {
+            background-color: #0f1010;
+        }
+
+        .settings-menu:hover .settings-menu-content {
+            display: block;
+
+        }
+
+        .menu-item {
+            white-space: nowrap;
+            display: block;
+            text-align: right;
+        }
+
+        .menu-item:not(:last-child) {
+            padding-bottom: 8px;
+        }
+
+        .menu-item:hover {
+            cursor: pointer;
+        }
+
+        body.lighttheme {
+            background-color: #f9f9f9;
+        }
+
+        .lighttheme #header {
+            color: #1D1F21;
+            background-color: #f9f9f9;
+        }
+
+        .lighttheme .header-icon path {
+            fill: #1D1F21;
+        }
+
+        .lighttheme .settings-menu-content {
+            background-color: #eaeaea;
+        }
+
+        .lighttheme .settings-menu:hover {
+            background-color: #eaeaea;
+        }
+
+        .lighttheme .left-panel {
+            border-right-color: #dddddd;
+            border-right-width: 1px;
+        }
+
+        .lighttheme .ad-container * {
+            color: #1D1F21 !important;
+        }
+
+        button {
+            border: 0;
+            background-color: #2E6DFF;
+            color: white;
+            text-transform: uppercase;
+            font-size: 14px;
+            font-family: monospace;
+            padding: 8px;
+            letter-spacing: 2px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2458d0;
+        }
+
+        button:active {
+            background-color: #1f4ebb;
+        }
+
+        .diff-history-item {
+            color: white;
+            font-family: monospace;
+            padding: 8px 0;
+            width: 100%;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .diff-history-item:hover {
+            background-color: #2d2d2d;
+        }
+
+        .lighttheme .diff-history-item {
+            color: #1D1F21;
+        }
+
+        .lighttheme .diff-history-item:hover {
+            background-color: #e4e4e4;
+        }
+
+        .history-timestamp {
+            white-space: nowrap;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .history-string {
+            word-break: break-all;
+            width: 100%;
+            overflow: hidden;
+            color: #a2a2a2;
+        }
+
+        .made-by-text {
+            margin-top: 8px;
+            padding-top: 8px;
+            background-color: #1D1F21;
+            margin-left: -16px;
+            padding-left: 16px;
+            margin-right: -16px;
+            padding-right: 16px;
+            margin-bottom: -24px;
+            padding-bottom: 16px;
+        }
+
+        .made-by-text a {
+            text-decoration: none;
+            color: #e4e4e4;
+            font-family: monospace;
+        }
+
+        .made-by-text img {
+            height: 15px;
+            vertical-align: text-bottom;
+        }
+    </style>
+</head>
+<body>
+<header id="header">
+    <div class="left">
+        <h1 class="left">{} Json Diff</h1>
+        <h2 class="left">Online JSON Compare</h2>
+    </div>
+    <div class="right">
+        <span id="error-message" style="display:none;"></span>
+    </div>
+</header>
+<div class="left-panel">
+    <div id="history-container" class="history-container">
+    </div>
+</div>
+<div class="diff-inputs">
+    <div id="left-input" class="json-diff-input split">
+        <textarea id="json-diff-left"></textarea>
+        <span class="input-buttons">
+          <a class="input-collapse" href="#">–</a>
+          <a class="input-split" href="#">◫</a>
+          <a class="input-expand" href="#">☐</a>
+        </span>
+    </div>
+    <div id="right-input" class="json-diff-input split">
+        <textarea id="json-diff-right"></textarea>
+        <span class="input-buttons">
+          <a class="input-collapse" href="#">–</a>
+          <a class="input-split" href="#">◫</a>
+          <a class="input-expand" href="#">☐</a>
+        </span>
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="www/lib/fast-json-patch/dist/json-patch-duplex.min.js" charset="utf-8"></script>
+<script src="www/lib/backbone-events-standalone/backbone-events-standalone.min.js" charset="utf-8"></script>
+<script src="www/lib/codemirror/lib/codemirror.js" charset="utf-8"></script>
+<script src="www/lib/codemirror/lib/util/formatting.js" charset="utf-8"></script>
+<script src="www/lib/codemirror/mode/javascript/javascript.js" charset="utf-8"></script>
+<script src="www/lib/codemirror/addon/edit/matchbrackets.js" charset="utf-8"></script>
+<script src="www/lib/json-source-map.js" charset="utf-8"></script>
+<script>
+    (function () {
+        _.templateSettings = { interpolate: /\{\{(.+?)\}\}/g };
+        var historyItemTemplate = _.template('<li class="diff-history-item" onclick="onClickHistoryItem(\{{index}})"><span class="history-timestamp">\{{name}}</span></li>');
+        var diffHistory = [];
+        {{#each aggregations}}
+            diffHistory.push({name: "{{this.name}}", right: JSON.stringify({{{this.sampleA.response.body}}},null, 2), left: JSON.stringify({{{this.sampleB.response.body}}},null, 2)});
+        {{/each}}
+        renderDiffHistory();
+
+        function JsonInputView (el, initialText) {
+            this.el = el;
+            var codemirror = this.codemirror = CodeMirror.fromTextArea(this.el, {
+                lineNumbers: true,
+                mode: { name: "javascript", json: true },
+                matchBrackets: true,
+                theme: 'tomorrow-night'
+            });
+            if (initialText) {
+                codemirror.setValue(initialText);
+            }
+
+            var self = this;
+            codemirror.on('inputRead', function (cm, e) {
+                if (e.origin === 'paste') {
+                    autoFormat();
+                }
+                triggerChange();
+            })
+            codemirror.on('keyup', triggerChange);
+            codemirror.on('change', triggerChange);
+            codemirror.on('clear', function () {
+                console.log(arguments);
+            })
+
+            var oldValue = '';
+            function triggerChange () {
+                var text = codemirror.getValue();
+                if (text !== oldValue) {
+                    self.trigger('change');
+                }
+                oldValue = text;
+            }
+
+            function autoFormat () {
+                var totalLines = codemirror.lineCount();
+                codemirror.autoFormatRange({ line: 0, ch: 0 }, { line: totalLines });
+                codemirror.setSelection({ line: 0, ch: 0 });
+            }
+        }
+
+        JsonInputView.prototype.getText = function () {
+            return this.codemirror.getValue();
+        };
+
+        JsonInputView.prototype.setText = function (text) {
+            return this.codemirror.setValue(text);
+        };
+
+        JsonInputView.prototype.highlightRemoval = function (diff) {
+            this._highlight(diff, '#DD4444');
+        };
+
+        JsonInputView.prototype.highlightAddition = function (diff) {
+            this._highlight(diff, isLightTheme() ? '#4ba2ff' : '#2E6DFF');
+        };
+
+        JsonInputView.prototype.highlightChange = function (diff) {
+            this._highlight(diff, isLightTheme() ? '#E5E833' : '#9E9E00');
+        };
+
+        JsonInputView.prototype._highlight = function (diff, color) {
+            var pos = getStartAndEndPosOfDiff(this.getText(), diff);
+            this.codemirror.markText(pos.start, pos.end, {
+                css: 'background-color: ' + color
+            });
+        };
+
+        JsonInputView.prototype.clearMarkers = function () {
+            this.codemirror.getAllMarks().forEach(function (marker) {
+                marker.clear();
+            });
+        };
+
+        function getStartAndEndPosOfDiff (textValue, diff) {
+            var result = parse(textValue);
+            var pointers = result.pointers;
+            var path = diff.path;
+            var start = {
+                line: pointers[path].key ? pointers[path].key.line : pointers[path].value.line,
+                ch: pointers[path].key ? pointers[path].key.column : pointers[path].value.column
+            };
+            var end = {
+                line: pointers[path].valueEnd.line,
+                ch: pointers[path].valueEnd.column
+            };
+
+            return {
+                start: start,
+                end: end
+            };
+        };
+
+        function isLightTheme () {
+            return $('body').hasClass('lighttheme');
+        };
+
+        BackboneEvents.mixin(JsonInputView.prototype);
+        var currentDiff = localStorage.getItem('current-diff') && JSON.parse(localStorage.getItem('current-diff'));
+
+        var leftInputView = new JsonInputView(document.getElementById('json-diff-left'), currentDiff && currentDiff.left);
+        var rightInputView = new JsonInputView(document.getElementById('json-diff-right'), currentDiff && currentDiff.right);
+        leftInputView.on('change', onInputChange);
+        rightInputView.on('change', onInputChange);
+        leftInputView.codemirror.on('scroll', function () {
+            var scrollInfo = leftInputView.codemirror.getScrollInfo();
+            rightInputView.codemirror.scrollTo(scrollInfo.left, scrollInfo.top);
+        });
+        rightInputView.codemirror.on('scroll', function () {
+            var scrollInfo = rightInputView.codemirror.getScrollInfo();
+            leftInputView.codemirror.scrollTo(scrollInfo.left, scrollInfo.top);
+        });
+
+        if (currentDiff) {
+            compareJson();
+        };
+
+        function onInputChange () {
+            compareJson();
+        };
+
+        function compareJson () {
+            leftInputView.clearMarkers();
+            rightInputView.clearMarkers();
+            var leftText = leftInputView.getText(), rightText = rightInputView.getText();
+            var leftJson, rightJson;
+            try {
+                if (leftText) {
+                    leftJson = JSON.parse(leftText)
+                }
+                if (rightText) {
+                    rightJson = JSON.parse(rightText)
+                }
+                document.getElementById('error-message').style.display = 'none'
+            } catch (e) {
+                document.getElementById('error-message').style.display = 'inline-block'
+            }
+            if (!leftJson || !rightJson) return;
+            var diffs = jsonpatch.compare(leftJson, rightJson);
+            window.diff = diffs;
+
+            diffs.forEach(function (diff) {
+                try {
+                    if (diff.op === 'remove') {
+                        leftInputView.highlightRemoval(diff)
+                    } else if (diff.op === 'add') {
+                        rightInputView.highlightAddition(diff)
+                    } else if (diff.op === 'replace') {
+                        rightInputView.highlightChange(diff)
+                        leftInputView.highlightChange(diff)
+                    }
+                } catch (e) {
+                    console.warn('error while trying to highlight diff', e)
+                }
+            })
+        };
+
+        function renderDiffHistory () {
+            console.log(diffHistory)
+            var inner = _.reduce(diffHistory, function (acc, item, i) {
+                acc += historyItemTemplate({
+                    name: item.name,
+                    index: i
+                })
+                return acc
+            }, '')
+            var html = '<ul class="diff-history-list">' + inner + '</ul>'
+            $('#history-container').html(html)
+        };
+
+        window.getInputViews = function () {
+            return {
+                left: leftInputView,
+                right: rightInputView
+            }
+        }
+        window.compareJson = compareJson
+        window.onClickHistoryItem = function (i) {
+            var item = diffHistory[i]
+            leftInputView.setText(item.left)
+            rightInputView.setText(item.right)
+        };
+    })();
+</script>
+<script>
+    initAd()
+    var isLightTheme = localStorage.getItem('lighttheme')
+    if (isLightTheme) {
+        enableLightTheme()
+    }
+    var dontSaveDiffs = localStorage.getItem('dont-save-diffs')
+    if (dontSaveDiffs) {
+        $('#localstorage-toggle').get(0).checked = false
+    }
+    $('#lighttheme-toggle').on('change', function (e) {
+        toggleLightTheme()
+    });
+
+    $('#localstorage-toggle').on('change', function (e) {
+        if (!e.currentTarget.checked) {
+            localStorage.setItem('dont-save-diffs', true)
+            localStorage.removeItem('current-diff')
+            localStorage.removeItem('diff-history')
+        } else {
+            localStorage.removeItem('dont-save-diffs')
+        }
+
+    });
+
+    $('#download-diff-button').on('click', onClickDownloadDiff);
+    $('#left-input').on('click', '.input-collapse,.input-split,.input-expand', onPaneResizeLeftClick);
+    $('#right-input').on('click', '.input-collapse,.input-split,.input-expand', onPaneResizeRightClick);
+
+    function initAd () {
+        var adNum = Math.floor(Math.random() * Math.floor(3)) + 1
+        var ad = $('<a href="https://blitapp.com?ref=json-diff-img' + adNum + '" class="carbon-img" target="_blank" rel="noopener"><img src="/img/blit-ad' + adNum + '.png" alt="Blit - Scheduled Website Screenshots" border="0" height="100" width="130" style="max-width: 130px;"></a>')
+        $('#ad-wrap').prepend(ad)
+    };
+
+    function toggleLightTheme () {
+        var isLightTheme = localStorage.getItem('lighttheme')
+        if (isLightTheme) {
+            disableLightTheme();
+        } else {
+            enableLightTheme();
+        }
+    };
+
+    function enableLightTheme () {
+        localStorage.setItem('lighttheme', true);
+        $('body').addClass('lighttheme');
+        $('#lighttheme-toggle').get(0).checked = true;
+        setTheme('default');
+    };
+
+    function disableLightTheme () {
+        localStorage.removeItem('lighttheme');
+        $('body').removeClass('lighttheme');
+        $('#lighttheme-toggle').get(0).checked = false;
+        setTheme('tomorrow-night');
+    };
+
+    function setTheme (theme) {
+        var views = getInputViews();
+        views.left.codemirror.setOption('theme', theme);
+        views.right.codemirror.setOption('theme', theme);
+        compareJson();
+    };
+
+    function onClickDownloadDiff () {
+        var filename = 'diff.json';
+        var text = JSON.stringify(window.diff, null, 2);
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+    };
+
+    function onPaneResizeLeftClick (e) {
+        onResize(e, 'left');
+    };
+
+    function onPaneResizeRightClick (e) {
+        onResize(e, 'right');
+    };
+
+    function onResize (e, side) {
+        e.preventDefault()
+        var otherSide = side === 'left' ? 'right' : 'left'
+        var clickClass = e.currentTarget.className
+        $('.json-diff-input').removeClass('split')
+        $('.json-diff-input').removeClass('expand')
+        $('.json-diff-input').removeClass('collapse')
+        var sideClass = 'split'
+        var otherSideClass = 'split'
+        if (clickClass === 'input-collapse') {
+            sideClass = 'collapse'
+            otherSideClass = 'expand'
+        } else if (clickClass === 'input-expand') {
+            sideClass = 'expand'
+            otherSideClass = 'collapse'
+        }
+        $('#' + side + '-input').addClass(sideClass)
+        $('#' + otherSide + '-input').addClass(otherSideClass)
+    };
+</script>
+</body>
+</html>
