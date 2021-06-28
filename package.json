@@ -27,7 +27,7 @@
   "dependencies": {
     "@types/node": "^13.13.4",
     "@types/postman-collection": "^3.5.3",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "newman": "^5.0.0",
     "postman-collection": "^3.6.0"
   }
